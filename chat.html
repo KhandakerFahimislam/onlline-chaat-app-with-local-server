@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="styles/style.css" />
+    <link rel="stylesheet" href="styles/js-snackbar.css" />
+    <script src="scripts/jquery-3.6.0.js"></script>
+    <script src="scripts/js-snackbar.js"></script>
+    <script src="node_modules/socket.io/client-dist/socket.io.js"></script>
+    <script src="node_modules/socketio-file-upload/client.js"></script>
+    <title>Chat</title>
+    <script>
+      $(() => {
+        var socket = io("http://localhost:3000");
+        socket.on("connect", () => {
+          var loader = new SocketIOFileUpload(socket);
+          loader.listenOnInput(document.getElementById("fu"));
+          loader.listenOnDrop(document.getElementById("drop"));
+          $("#panelconnect").show();
+          $("#connect").click(() => {
+            socket.emit("register", $("#name").val());
+          });
+          $("#create").click(() => {
+            socket.emit("create", $("#gr").val());
+            $("#gr").val("");
+          });
+          $("#join").click(() => {
+            socket.emit("joingroup", $("#groups").val());
+          });
+          $("#send").click(() => {
+            if ($("#sgn").html() == "") {
+              SnackBar({
+                message: `Join a group, then send message`,
+                position: "tc",
+                status: "warning",
+              });
+            } else {
+              socket.emit("chat", $("#msg").val());
+              $("#msg").val("");
+            }
+          });
+          $("#upload").click(() => {
+            $("#fu").trigger("click");
+          });
+          socket.on("regsuccess", (name) => {
+            console.log(name);
+            $("#sdn").html(name);
+            $("#panelconnect").hide();
+            $("#panelchat").show();
+          });
+          socket.on("joinsuccess", (name) => {
+            console.log(name);
+            $("#sgn").html(name);
+          });
+          socket.on("userlist", (names) => {
+            console.log(names);
+            $("#users").empty(),
+              names.forEach((n) => {
+                $("#users").append(`<li>${n}</li>`);
+              });
+          });
+          socket.on("grouplist", (names) => {
+            console.log(names);
+            $("#groups").empty(),
+              names.forEach((n) => {
+                $("#groups").append(`<option value='${n}'>${n}</option>`);
+              });
+          });
+          socket.on("message", (m) => {
+            $("#messages").append(`<li>${m.from}: ${m.msg}</li>`);
+          });
+          socket.on("uploaded", (m) => {
+            console.log(m);
+            $("#files").append(`<figure>
+						<img src="uploads/${m.type == "image" ? m.file : "file.png"}" />
+						<figcaption>Uploaded by ${m.from}</figcaption>
+						<a target='_blank' href="uploads/${m.file}">Download</a>
+					</figure>`);
+          });
+          loader.addEventListener("complete", function (event) {
+            console.log(event.success);
+            SnackBar({
+              message: `${event.file.name} uploaded`,
+              position: "bc",
+            });
+          });
+        });
+        $(".bar").click(() => {
+          $(".nav").toggleClass("active");
+        });
+      });
+    </script>
+  </head>
+  <body>
+    <nav class="navbar dark-primary-color">
+      <span class="bar" href="#">&#9776;</span>
+      <span class="brand" href="#">Chat <sup>app</sup></span>
+      <ul class="nav">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="chat.html">Chat</a></li>
+      </ul>
+    </nav>
+    <div class="container">
+      <div class="row mt mb" id="panelconnect" style="display: none">
+        <div class="c1-4"></div>
+        <div class="c2-4">
+          <div class="ig">
+            <input
+              type="text"
+              class="it"
+              id="name"
+              placeholder="display name.."
+            />
+            <button class="b" id="connect">Connect</button>
+          </div>
+        </div>
+        <div class="c1-4"></div>
+      </div>
+      <div class="row mt mb" id="panelchat" style="display: none">
+        <div class="c1-4">
+          <div class="list-header">Users</div>
+          <ul class="list" id="users"></ul>
+        </div>
+        <div class="c3-4 pl">
+          <div class="ig">
+            User &nbsp;<span id="sdn"></span> &nbsp;<span id="sgn"></span>
+          </div>
+          <div class="ig">
+            <select class="it" id="groups"></select>
+            <button class="b" id="join">Join</button>
+          </div>
+          <div class="ig">
+            <input type="text" class="it" id="gr" />
+            <button class="b" id="create">Create</button>
+          </div>
+          <div class="ig">
+            <input type="text" class="it" id="msg" />
+            <button class="b" id="send">Send</button>
+            <button class="b" id="upload">Files</button>
+          </div>
+          <div class="drop mt" id="drop">Drop files here</div>
+          <div class="list-header mt">Messages</div>
+          <ul class="list" id="messages"></ul>
+          <div class="files mt" id="files"></div>
+        </div>
+      </div>
+    </div>
+    <input type="file" id="fu" style="display: none" />
+  </body>
+</html>
